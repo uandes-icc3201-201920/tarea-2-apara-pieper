@@ -5,7 +5,7 @@ You may add or rearrange any code or data as you need.
 The header files page_table.h and disk.h explain
 how to use the page table and disk interfaces.
 */
-
+#include <signal.h>
 #include "page_table.h"
 #include "disk.h"
 #include "program.h"
