@@ -49,8 +49,11 @@ int main( int argc, char *argv[] )
 
 	char *physmem = page_table_get_physmem(pt);
 
+	page_table_set_entry(pt,npages,npages,PROT_READ|PROT_WRITE);//ACA SE CAE! <----------
+
 	if(!strcmp(program,"pattern1")) {
 		access_pattern1(virtmem,npages*PAGE_SIZE);
+		disk_write( disk, npages, physmem );
 
 	} else if(!strcmp(program,"pattern2")) {
 		access_pattern2(virtmem,npages*PAGE_SIZE);
