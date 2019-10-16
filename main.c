@@ -15,6 +15,12 @@ how to use the page table and disk interfaces.
 #include <string.h>
 #include <errno.h>
 
+typedef struct frameArray//contiene el arreglo de marco
+{
+	int *array;
+	int length;
+}frameArray;
+frameArray *createframeArray(int largo);//funcion para crear arreglo de marcos
 void page_fault_handler( struct page_table *pt, int page )
 {
 	printf("page fault on page #%d\n",page);
@@ -31,6 +37,14 @@ int main( int argc, char *argv[] )
 	int npages = atoi(argv[1]);
 	int nframes = atoi(argv[2]);
 	const char *program = argv[4];
+	
+	frameArray *tabla_marcos = createframeArray(nframes);//guardo la tabla de marco,array simple
+	//test
+	for( int i=0; i < tabla_marcos->length ; i++)
+	{
+		tabla_marcos->array[i] = i;
+		printf("marco %d data %d\n",i,tabla_marcos->array[i]);
+	}//endtest
 
 	struct disk *disk = disk_open("myvirtualdisk",npages);
 	if(!disk) {
@@ -67,4 +81,12 @@ int main( int argc, char *argv[] )
 	disk_close(disk);
 
 	return 0;
+}
+
+frameArray *createframeArray(int largo)
+{
+	frameArray *newArray = malloc(sizeof(frameArray));
+	newArray->length = largo;
+	newArray->array = malloc(sizeof(int)*largo);
+	return newArray;
 }
