@@ -15,14 +15,19 @@ how to use the page table and disk interfaces.
 #include <string.h>
 #include <errno.h>
 
+#include <time.h>
+
+char *physmem;
+struct disk *disk;
+
 //Contadores para imprimir resultado
 int n_faltas_de_pagina = 0, n_lecturas = 0, n_escrituras = 0;
-//valor de argv[3]
+//puntero para asociar valorde argv[3]
 char *metodo;
 //contiene el arreglo de marco
 typedef struct marco
 {	
-	int numero_marco_pagina;
+	int numero_marco_pagina;//
 }marco;
 typedef struct frameArray
 {
@@ -31,7 +36,7 @@ typedef struct frameArray
 }frameArray;
 
 frameArray *createframeArray(int largo);//funcion para crear arreglo simple de marcos
-frameArray *tabla_marcos;
+frameArray *tabla_marcos;//puntero para tener la tabla en todos lados
 void metodo_random( struct page_table *pt, int page);//funcion de metodo random para cambio pagina
 void metodo_FIFO( struct page_table *pt, int page);//funcion de metodo fifo
 void page_fault_handler( struct page_table *pt, int page )
@@ -47,7 +52,7 @@ void page_fault_handler( struct page_table *pt, int page )
 	{
 		metodo_random(pt,page);
 	}
-	exit(1);
+	//exit(1);
 }
 
 int main( int argc, char *argv[] )
@@ -63,16 +68,19 @@ int main( int argc, char *argv[] )
 	metodo = argv[3];
 //printf("%d \n",*metodo);
 //printf("%d \n",*program);
+
+	//random seed
+	srand(time(NULL));
 	
 	tabla_marcos = createframeArray(nframes);//guardo la tabla de marco,array simple
-	//valoro en 0 la tabla
+	//valoro en -1 la tabla para indicar que esta vacio cada marco
 	for( int i=0; i < tabla_marcos->length ; i++)
 	{
-		tabla_marcos->marcos[i].numero_marco_pagina = 0;
+		tabla_marcos->marcos[i].numero_marco_pagina = -1;
 		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].numero_marco_pagina);
 	}
 
-	struct disk *disk = disk_open("myvirtualdisk",npages);
+	disk = disk_open("myvirtualdisk",npages);
 	if(!disk) {
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
 		return 1;
@@ -87,9 +95,9 @@ int main( int argc, char *argv[] )
 
 	char *virtmem = page_table_get_virtmem(pt);
 
-	char *physmem = page_table_get_physmem(pt);
+	physmem = page_table_get_physmem(pt);
 
-	//page_table_set_entry(pt,npages,npages,PROT_READ|PROT_WRITE);//ACA SE CAE! <----------
+	//page_table_set_entry(pt,pagina,frame,bits PROT_READ|PROT_WRITE);//ACA SE CAE! <----------
 
 	if(!strcmp(program,"pattern1")) {
 		access_pattern1(virtmem,npages*PAGE_SIZE);
@@ -120,6 +128,11 @@ int main( int argc, char *argv[] )
 	printf("         -----------> Resumen <-----------\n");
 	printf("   Faltas de pagina:                   %d\n   Lecturas de disco:                  %d\n   Escrituras a disco:                 %d\n\n",n_faltas_de_pagina,n_lecturas,n_escrituras);
 
+for( int i=0; i < tabla_marcos->length ; i++)
+	{
+		
+		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].numero_marco_pagina);
+	}
 	return 0;
 }
 
@@ -139,13 +152,28 @@ void metodo_random( struct page_table *pt, int page)
 	//no esta en memoria si bits es 0, si bits es otro valor entonces esta en memoria
 	if( bits == 0 )
 	{
-	
+		//hay que buscar un marco disponible o no al azar para guardar la pagina
+		int posible_marco = rand() % tabla_marcos->length;
+		if( tabla_marcos->marcos[posible_marco].numero_marco_pagina == -1 )
+		{
+			//marco libre disponible
+			frame = posible_marco;
+			bits = PROT_READ;
+			page_table_set_entry(pt,page,frame,bits);
+			disk_read(disk,page,&physmem[tabla_marcos->marcos[frame].numero_marco_pagina*sizeof(marco)]);
+		}
+		else
+		{
+			//caso en que marco no este libre
+		}
 	}
 	else if( bits != 0)
 	{
-	
+		//solo se actualizan bits para poder escriber en este segmento
+		bits = PROT_READ | PROT_WRITE;
+		page_table_set_entry(pt,page,frame,bits);
 	}
-	exit(1);
+	//exit(1);
 }
 void metodo_FIFO( struct page_table *pt, int page)
 {
