@@ -20,14 +20,21 @@ int n_faltas_de_pagina = 0, n_lecturas = 0, n_escrituras = 0;
 //valor de argv[3]
 char *metodo;
 //contiene el arreglo de marco
+typedef struct marco
+{	
+	int numero_marco_pagina;
+	int bit;
+}marco;
 typedef struct frameArray
 {
-	int *array;
+	marco *marcos;
 	int length;
 }frameArray;
 
 frameArray *createframeArray(int largo);//funcion para crear arreglo simple de marcos
-
+frameArray *tabla_marcos;
+void metodo_random( struct page_table *pt, int page);//funcion de metodo random para cambio pagina
+void metodo_FIFO( struct page_table *pt, int page);//funcion de metodo fifo
 void page_fault_handler( struct page_table *pt, int page )
 {
 	printf("page fault on page #%d\n",page);
@@ -39,7 +46,7 @@ void page_fault_handler( struct page_table *pt, int page )
 	}
 	else if (!strcmp(metodo,"rand"))
 	{
-		//funcion metodo reemplazo random
+		metodo_random(pt,page);
 	}
 	exit(1);
 }
@@ -58,12 +65,13 @@ int main( int argc, char *argv[] )
 //printf("%d \n",*metodo);
 //printf("%d \n",*program);
 	
-	frameArray *tabla_marcos = createframeArray(nframes);//guardo la tabla de marco,array simple
+	tabla_marcos = createframeArray(nframes);//guardo la tabla de marco,array simple
 	//valoro en 0 la tabla
 	for( int i=0; i < tabla_marcos->length ; i++)
 	{
-		tabla_marcos->array[i] = 0;
-		printf("marco %d data %d\n",i,tabla_marcos->array[i]);
+		tabla_marcos->marcos[i].bit = 0;
+		tabla_marcos->marcos[i].numero_marco_pagina = 0;
+		printf("marco %d bit %d pagina asociada %d\n",i,tabla_marcos->marcos[i].bit,tabla_marcos->marcos[i].numero_marco_pagina);
 	}
 
 	struct disk *disk = disk_open("myvirtualdisk",npages);
@@ -121,6 +129,27 @@ frameArray *createframeArray(int largo)
 {
 	frameArray *newArray = malloc(sizeof(frameArray));
 	newArray->length = largo;
-	newArray->array = malloc(sizeof(int)*largo);
+	newArray->marcos = malloc(sizeof(marco)*largo);
 	return newArray;
+}
+void metodo_random( struct page_table *pt, int page)
+{
+	//segun la parte 2.4. consejos
+	int frame, bits;
+	page_table_get_entry(pt,page,&frame,&bits);
+	printf("marco %d  bits %d \n",frame,bits);
+	//no esta en memoria si bits es 0, si bits es otro valor entonces esta en memoria
+	if( bits == 0 )
+	{
+	
+	}
+	else if( bits != 0)
+	{
+	
+	}
+	exit(1);
+}
+void metodo_FIFO( struct page_table *pt, int page)
+{
+	exit(1);
 }
