@@ -23,7 +23,6 @@ char *metodo;
 typedef struct marco
 {	
 	int numero_marco_pagina;
-	int bit;
 }marco;
 typedef struct frameArray
 {
@@ -69,9 +68,8 @@ int main( int argc, char *argv[] )
 	//valoro en 0 la tabla
 	for( int i=0; i < tabla_marcos->length ; i++)
 	{
-		tabla_marcos->marcos[i].bit = 0;
 		tabla_marcos->marcos[i].numero_marco_pagina = 0;
-		printf("marco %d bit %d pagina asociada %d\n",i,tabla_marcos->marcos[i].bit,tabla_marcos->marcos[i].numero_marco_pagina);
+		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].numero_marco_pagina);
 	}
 
 	struct disk *disk = disk_open("myvirtualdisk",npages);
