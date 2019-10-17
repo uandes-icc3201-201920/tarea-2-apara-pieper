@@ -27,7 +27,7 @@ char *metodo;
 //contiene el arreglo de marco
 typedef struct marco
 {	
-	int data;
+	long unsigned int data;
 	int pagina;
 }marco;
 typedef struct frameArray
@@ -42,7 +42,7 @@ void metodo_random( struct page_table *pt, int page);//funcion de metodo random 
 void metodo_FIFO( struct page_table *pt, int page);//funcion de metodo fifo
 void page_fault_handler( struct page_table *pt, int page )
 {
-	printf("page fault on page #%d\n",page);
+	//printf("page fault on page #%d\n",page);
 	n_faltas_de_pagina++;
 	
 	if(!strcmp(metodo,"FIFO"))
@@ -77,7 +77,7 @@ int main( int argc, char *argv[] )
 	//valoro en -1 la tabla para indicar que esta vacio cada marco
 	for( int i=0; i < tabla_marcos->length ; i++)
 	{
-		tabla_marcos->marcos[i].data = -1;
+		tabla_marcos->marcos[i].pagina = -1;
 		//printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].data);
 	}
 
@@ -127,11 +127,6 @@ int main( int argc, char *argv[] )
 	printf("         -----------> Resumen <-----------\n");
 	printf("   Faltas de pagina:                   %d\n   Lecturas de disco:                  %d\n   Escrituras a disco:                 %d\n\n",n_faltas_de_pagina,n_lecturas,n_escrituras);
 
-for( int i=0; i < tabla_marcos->length ; i++)
-	{
-		
-		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].pagina);
-	}
 	return 0;
 }
 
@@ -147,31 +142,55 @@ void metodo_random( struct page_table *pt, int page)
 	//segun la parte 2.4. consejos
 	int frame, bits;
 	page_table_get_entry(pt,page,&frame,&bits);
-	printf("marco %d  bits %d \n",frame,bits);
+	//printf("marco %d  bits %d \n",frame,bits);
 	int posible_marco = rand() % tabla_marcos->length;
 	//no esta en memoria si bits es 0, si bits es otro valor entonces esta en memoria
+	int its_free = 0;
 	if( bits == 0 )
 	{
-		//hay que buscar un marco disponible o no al azar para guardar la pagina
-		if( tabla_marcos->marcos[posible_marco].data == -1 )
+		//busco si hay un marco libre
+		for( int i=0; i < tabla_marcos->length; i++)
 		{
-			//marco libre disponible
+			if( tabla_marcos->marcos[i].pagina != -1 )
+			{
+				continue;
+			}
+			posible_marco = i;
+			its_free = 1;
+			break;
+		}
+		
+		if(its_free != 1)
+		{
+			//hay que buscar un marco disponible o no al azar para guardar la pagina
+			if( tabla_marcos->marcos[posible_marco].pagina == -1 )
+			{
+				//marco libre disponible
+				bits = PROT_READ;
+				tabla_marcos->marcos[posible_marco].pagina = page;
+				page_table_set_entry(pt,page,posible_marco,bits);
+				disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*sizeof(marco)]);
+				n_lecturas++;
+			}
+			else
+			{
+				//caso en que marco no este libre
+				bits = PROT_READ;
+				disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
+				disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
+				page_table_set_entry(pt,page,posible_marco,bits);
+				page_table_set_entry(pt,tabla_marcos->marcos[posible_marco].pagina,posible_marco,0);
+				tabla_marcos->marcos[posible_marco].pagina = page;
+				n_escrituras++;
+				n_lecturas++;
+			}
+		}
+		else
+		{
 			bits = PROT_READ;
 			tabla_marcos->marcos[posible_marco].pagina = page;
 			page_table_set_entry(pt,page,posible_marco,bits);
 			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*sizeof(marco)]);
-			n_lecturas++;
-		}
-		else
-		{
-			//caso en que marco no este libre
-			bits = PROT_READ;
-			disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
-			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
-			page_table_set_entry(pt,page,posible_marco,bits);
-			page_table_set_entry(pt,tabla_marcos->marcos[posible_marco].pagina,posible_marco,0);
-			tabla_marcos->marcos[posible_marco].pagina = page;
-			n_escrituras++;
 			n_lecturas++;
 		}
 	}
