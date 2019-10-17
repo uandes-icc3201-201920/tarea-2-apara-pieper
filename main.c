@@ -38,6 +38,7 @@ typedef struct frameArray
 
 frameArray *createframeArray(int largo);//funcion para crear arreglo simple de marcos
 frameArray *tabla_marcos;//puntero para tener la tabla en todos lados
+frameArray *FIFO_arr;
 void metodo_random( struct page_table *pt, int page);//funcion de metodo random para cambio pagina
 void metodo_FIFO( struct page_table *pt, int page);//funcion de metodo fifo
 void page_fault_handler( struct page_table *pt, int page )
@@ -47,7 +48,7 @@ void page_fault_handler( struct page_table *pt, int page )
 	
 	if(!strcmp(metodo,"FIFO"))
 	{
-		//funcion metodo reemplazo fifo
+		metodo_FIFO(pt, page);
 	}
 	else if (!strcmp(metodo,"rand"))
 	{
@@ -74,13 +75,14 @@ int main( int argc, char *argv[] )
 	srand(time(NULL));
 	
 	tabla_marcos = createframeArray(nframes);//guardo la tabla de marco,array simple
+	FIFO_arr = createframeArray(nframes); //arreglo para guardar pos de tamaño nframes
 	//valoro en -1 la tabla para indicar que esta vacio cada marco
 	for( int i=0; i < tabla_marcos->length ; i++)
 	{
 		tabla_marcos->marcos[i].pagina = -1;
+		FIFO_arr->marcos[i].pagina = -1;
 		//printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].data);
 	}
-
 	disk = disk_open("myvirtualdisk",npages+1);
 	if(!disk) {
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
@@ -206,5 +208,71 @@ void metodo_random( struct page_table *pt, int page)
 }
 void metodo_FIFO( struct page_table *pt, int page)
 {
-	exit(1);
+	//hacer lista o arr que guarde las pos de las paginas con "append" cosa que se agreguen de izq a der
+	//cuando se llene la lkista y tenga que reemplazar, que busque la pos[0] y que el numero de esta sea
+	// remplazada por pos[-1] y se corra todo 1 a la izq pos[i-1]
+	int frame, bits;
+	page_table_get_entry(pt,page,&frame,&bits);
+	//no esta en memoria si bits es 0, si bits es otro valor entonces esta en memoria
+	int posible_marco = rand() % tabla_marcos->length;
+	int its_free = 0;
+	if( bits == 0 )
+	{
+		//busco si hay un marco libre
+		for( int i=0; i < tabla_marcos->length; i++)
+		{
+			if( tabla_marcos->marcos[i].pagina != -1 )
+			{
+				continue;
+			}
+			posible_marco = i;
+			its_free = 1;
+			break;
+		}
+		
+		if(its_free != 1)
+		{
+			//esta ocupado
+			for(int k = 1; k < tabla_marcos->length; k++)
+			{
+				FIFO_arr->marcos[k].pagina = FIFO_arr->marcos[k-1].pagina;
+			}
+			FIFO_arr->marcos[-1].pagina = page;
+			for ( int l = 0; l < tabla_marcos->length; l++)
+			{
+				if ( tabla_marcos->marcos[l].pagina == FIFO_arr->marcos[-1].pagina )
+				{
+					posible_marco = l;
+					break;
+				}
+			}
+			bits = PROT_READ;
+			disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
+			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
+			page_table_set_entry(pt,page,posible_marco,bits);
+			page_table_set_entry(pt,tabla_marcos->marcos[posible_marco].pagina,posible_marco,0);
+			tabla_marcos->marcos[posible_marco].pagina = page;
+			n_escrituras++;
+			n_lecturas++;
+		}
+		else
+		{
+			//libre
+			FIFO_arr->marcos[posible_marco].pagina = page;
+			bits = PROT_READ;
+			tabla_marcos->marcos[posible_marco].pagina = page;
+			page_table_set_entry(pt,page,posible_marco,bits);
+			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*sizeof(marco)]);
+			n_lecturas++;
+		}
+	}
+	else if( bits != 0)
+	{
+		//solo se actualizan bits para poder escriber en este segmento
+		bits = PROT_READ | PROT_WRITE;
+		page_table_set_entry(pt,page,frame,bits);
+		tabla_marcos->marcos[frame].pagina = page;
+		tabla_marcos->marcos[frame].data = bits;
+	}
+	//exit(1);
 }
