@@ -60,7 +60,7 @@ void page_fault_handler( struct page_table *pt, int page )
 int main( int argc, char *argv[] )
 {
 	if(argc!=5) {
-		printf("use: virtmem <npages> <nframes> <lru|fifo> <access pattern>\n");
+		printf("use: virtmem <npages> <nframes> <rand|FIFO> <pattern1|pattern2|pattern3>\n");
 		return 1;
 	}
 
