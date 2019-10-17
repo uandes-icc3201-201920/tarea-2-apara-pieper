@@ -98,8 +98,6 @@ int main( int argc, char *argv[] )
 
 	physmem = page_table_get_physmem(pt);
 
-	//page_table_set_entry(pt,pagina,frame,bits PROT_READ|PROT_WRITE);//ACA SE CAE! <----------
-
 	if(!strcmp(program,"pattern1")) {
 		access_pattern1(virtmem,npages*PAGE_SIZE);
 		disk_write( disk, npages, physmem );
@@ -132,7 +130,7 @@ int main( int argc, char *argv[] )
 for( int i=0; i < tabla_marcos->length ; i++)
 	{
 		
-		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].data);
+		printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].pagina);
 	}
 	return 0;
 }
@@ -150,30 +148,31 @@ void metodo_random( struct page_table *pt, int page)
 	int frame, bits;
 	page_table_get_entry(pt,page,&frame,&bits);
 	printf("marco %d  bits %d \n",frame,bits);
+	int posible_marco = rand() % tabla_marcos->length;
 	//no esta en memoria si bits es 0, si bits es otro valor entonces esta en memoria
 	if( bits == 0 )
 	{
 		//hay que buscar un marco disponible o no al azar para guardar la pagina
-		int posible_marco = rand() % tabla_marcos->length;
 		if( tabla_marcos->marcos[posible_marco].data == -1 )
 		{
 			//marco libre disponible
-			frame = posible_marco;
 			bits = PROT_READ;
-			tabla_marcos->marcos[frame].pagina = page;
-			page_table_set_entry(pt,page,frame,bits);
-			disk_read(disk,page,&physmem[tabla_marcos->marcos[frame].data*sizeof(marco)]);
+			tabla_marcos->marcos[posible_marco].pagina = page;
+			page_table_set_entry(pt,page,posible_marco,bits);
+			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*sizeof(marco)]);
+			n_lecturas++;
 		}
 		else
 		{
 			//caso en que marco no este libre
 			bits = PROT_READ;
-			disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[posible_marco*PAGE_SIZE]);
-			disk_read(disk,page,&physmem[posible_marco*sizeof(marco)]);
+			disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
+			disk_read(disk,page,&physmem[tabla_marcos->marcos[posible_marco].data*PAGE_SIZE]);
 			page_table_set_entry(pt,page,posible_marco,bits);
 			page_table_set_entry(pt,tabla_marcos->marcos[posible_marco].pagina,posible_marco,0);
 			tabla_marcos->marcos[posible_marco].pagina = page;
-			
+			n_escrituras++;
+			n_lecturas++;
 		}
 	}
 	else if( bits != 0)
@@ -182,6 +181,7 @@ void metodo_random( struct page_table *pt, int page)
 		bits = PROT_READ | PROT_WRITE;
 		page_table_set_entry(pt,page,frame,bits);
 		tabla_marcos->marcos[frame].pagina = page;
+		tabla_marcos->marcos[frame].data = bits;
 	}
 	//exit(1);
 }
