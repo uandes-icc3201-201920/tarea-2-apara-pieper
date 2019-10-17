@@ -81,7 +81,7 @@ int main( int argc, char *argv[] )
 		//printf("marco %d pagina asociada %d\n",i,tabla_marcos->marcos[i].data);
 	}
 
-	disk = disk_open("myvirtualdisk",npages);
+	disk = disk_open("myvirtualdisk",npages+1);
 	if(!disk) {
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
 		return 1;
@@ -169,7 +169,7 @@ void metodo_random( struct page_table *pt, int page)
 			//caso en que marco no este libre
 			bits = PROT_READ;
 			disk_write(disk,tabla_marcos->marcos[posible_marco].pagina,&physmem[posible_marco*PAGE_SIZE]);
-			disk_read(disk,page,&physmem[posible_marco*PAGE_SIZE]);
+			disk_read(disk,page,&physmem[posible_marco*sizeof(marco)]);
 			page_table_set_entry(pt,page,posible_marco,bits);
 			page_table_set_entry(pt,tabla_marcos->marcos[posible_marco].pagina,posible_marco,0);
 			tabla_marcos->marcos[posible_marco].pagina = page;
