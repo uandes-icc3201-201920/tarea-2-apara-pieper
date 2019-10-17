@@ -35,6 +35,13 @@ void access_pattern1( char *data, int length )
 void access_pattern2( char *data, int length )
 {
 	// TODO: Implementar
+	//pattern2 sera al azar con la parte que dice en el consejo con lrand48()
+	long int pos;
+	for( int i = 0; i < length ; i++)
+	{
+		pos = lrand48()%length;
+		data[pos] = 0;
+	}
 }
 
 void access_pattern3( char *cdata, int length )
