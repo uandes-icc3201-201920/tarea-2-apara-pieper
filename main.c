@@ -119,6 +119,7 @@ int main( int argc, char *argv[] )
 	disk_close(disk);
 	
 	free(tabla_marcos);
+	free(FIFO_arr);
 	
 	//resultados
 	printf("         -----------> Input <-----------\n");
